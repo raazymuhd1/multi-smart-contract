@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
+import { Vm } from "forge-std/Vm.sol";
 import {Presale} from "../../src/Presale.sol";
 import { DeployPresale } from "../../script/DeployPresale.s.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
@@ -29,7 +30,7 @@ contract PresaleTest is Test {
         deployer = new DeployPresale();
         ( presaleAddr, usdc, usdt, token) = deployer.run();
 
-        presale = Presale(presaleAddr);
+        presale = Presale(payable(presaleAddr));
         usdtContract = ERC20Mock(usdt);
         usdcContract = ERC20Mock(usdc);
         tokenContract = ERC20Mock(token);
@@ -45,6 +46,11 @@ contract PresaleTest is Test {
         usdtContract.mint(USER, 1000_000 * DECIMALS);
         usdcContract.mint(USER, 1000_000 * DECIMALS);
         vm.stopPrank();
+        _;
+    }
+
+    modifier TransferOwner(address newOwner) {
+        presale.transferOwnership(newOwner);
         _;
     }
 
@@ -85,7 +91,7 @@ contract PresaleTest is Test {
         uint256 expectedBalance = tokenContract.balanceOf(USER);
 
         console.log(payAmount);
-        console.log(address(this).balance);
+        console.log(USER.balance);
 
         vm.stopPrank();
 
@@ -117,12 +123,29 @@ contract PresaleTest is Test {
         vm.startPrank(USER);
         usdtContract.approve(address(presale), payAmount); // this approve should be call on the frontend later 
         vm.expectEmit(address(presale)); // event emitter
+        vm.recordLogs();
         emit Presale.BuyTokenSuccessull(USER, tokenAmount);
         presale.buyToken{value: 0}(tokenAmount, "usdt");
 
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+       console.logBytes32(logs[0].topics[1]);
+       console.logBytes32(bytes32(bytes20(msg.sender)));
+
+        // assertEq(logs[0].topics[1], bytes32(bytes20(USER)));
+        assertEq(logs[0].topics[2], bytes32(uint256(tokenAmount)));
         vm.stopPrank();
 
         assert(tokenContract.balanceOf(USER) > 0);
+    }
+
+    function test_startPresale() public TransferOwner(USER) {
+        vm.prank(USER);
+        Presale.SaleState state =  presale.startPresale();
+        uint256 expectedState = 0;
+        console.log(presale.owner());
+
+        assert(uint256(state) == expectedState);
     }
 }
 
