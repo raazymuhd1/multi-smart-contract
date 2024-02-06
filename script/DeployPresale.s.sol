@@ -17,7 +17,7 @@ contract DeployPresale is Script {
 
         vm.startBroadcast();
         networkConfig = new HelperConfig();
-        (usdc, usdt, token, treasury) = networkConfig.activeNetwork();
+        (usdc, usdt, token, treasury) = networkConfig.activePresaleNetwork();
 
         /**
          * @param usdt
@@ -25,7 +25,7 @@ contract DeployPresale is Script {
          * @param treasury - treasury address
          * @param tokenAddr - token address
          */
-        presale = new Presale(usdc, usdt, token, treasury);
+        presale = new Presale(usdt, usdc, treasury, token);
         vm.stopBroadcast();
 
         console.log(address(presale));

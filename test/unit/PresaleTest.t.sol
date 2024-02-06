@@ -22,6 +22,7 @@ contract PresaleTest is Test {
     address public ZERO_ADDR = address(0);
     uint256 public INITIAL_BALANCE = 10 ether;
     uint256 public BNB_PRICE = 0.01 ether;
+    uint256 public USDT_PRICE = 0.01 ether;
     uint256 public DECIMALS = 1e18;
 
     function setUp() public {
@@ -42,6 +43,7 @@ contract PresaleTest is Test {
         vm.startPrank(USER);
         tokenContract.mint(address(presale), 200_000_000 * DECIMALS);
         usdtContract.mint(USER, 1000_000 * DECIMALS);
+        usdcContract.mint(USER, 1000_000 * DECIMALS);
         vm.stopPrank();
         _;
     }
@@ -54,37 +56,73 @@ contract PresaleTest is Test {
         assert(expectedPaymentToken == usdt);
     }
 
-    function test_buyWithZeroAddress() public Minted {
-        uint tokenAmount = 100;
-        uint256 payAmount = (BNB_PRICE * tokenAmount) / DECIMALS;
-
-        vm.expectRevert();
-        presale.buyToken{value: payAmount}(100, "usdt");
-
-        vm.stopPrank();
-
-        assert(msg.sender == address(0));
-    }
-
     function test_buyTokenWithUsdt() public Minted {
         uint tokenAmount = 200;
-        uint256 payAmount = (BNB_PRICE * tokenAmount) / DECIMALS;
+        uint256 payAmount = USDT_PRICE * tokenAmount;
 
         vm.startPrank(USER);
         uint256 userBalanceBfore = tokenContract.balanceOf(USER);
 
-        tokenContract.approve(address(presale), payAmount);
+        usdtContract.approve(address(presale), payAmount); // this approve should be call on the frontend later 
         presale.buyToken{value: 0}(tokenAmount, "usdt");
         uint256 expectedBalance = tokenContract.balanceOf(USER);
 
-        console.log(tokenContract.balanceOf(address(presale)));
-        console.log(usdtContract.balanceOf(address(USER)));
-        console.log(USER, address(presale));
-
         vm.stopPrank();
 
-        console.log(address(presale).balance);
+        console.log(payAmount);
         assert(expectedBalance > userBalanceBfore);
     }
     
+
+     function test_buyTokenWithBnb() public Minted {
+        uint tokenAmount = 200;
+        uint256 payAmount = BNB_PRICE * tokenAmount;
+
+        vm.startPrank(USER);
+        uint256 userBalanceBfore = tokenContract.balanceOf(USER);
+
+        presale.buyToken{value: payAmount}(tokenAmount, "bnb");
+        uint256 expectedBalance = tokenContract.balanceOf(USER);
+
+        console.log(payAmount);
+        console.log(address(this).balance);
+
+        vm.stopPrank();
+
+        assert(expectedBalance > userBalanceBfore);
+    }
+
+     function test_buyTokenWithUsdc() public Minted {
+        uint tokenAmount = 200;
+        uint256 payAmount = BNB_PRICE * tokenAmount;
+
+        vm.startPrank(USER);
+        uint256 userBalanceBfore = tokenContract.balanceOf(USER);
+        usdcContract.approve(address(presale), payAmount); // this approve should be call on the frontend later 
+        presale.buyToken{value: payAmount}(tokenAmount, "usdc");
+        uint256 expectedBalance = tokenContract.balanceOf(USER);
+
+        console.log(payAmount);
+        console.log(address(this).balance);
+
+        vm.stopPrank();
+
+        assert(expectedBalance > userBalanceBfore);
+    }
+
+    function test_emitBuySuccessfullEvent() public Minted {
+        uint tokenAmount = 200;
+        uint256 payAmount = BNB_PRICE * tokenAmount;
+
+        vm.startPrank(USER);
+        usdtContract.approve(address(presale), payAmount); // this approve should be call on the frontend later 
+        vm.expectEmit(address(presale)); // event emitter
+        emit Presale.BuyTokenSuccessull(USER, tokenAmount);
+        presale.buyToken{value: 0}(tokenAmount, "usdt");
+
+        vm.stopPrank();
+
+        assert(tokenContract.balanceOf(USER) > 0);
+    }
 }
+

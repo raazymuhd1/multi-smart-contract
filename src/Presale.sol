@@ -7,14 +7,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract Presale is Ownable {
     error Presale_AddressCannotBeZero();
     error Presale_valueShouldMoreThanZero();
-    error Presale_PaymentFailed();
+    error Presale_PaymentFailed(string reason);
     error Presale_BnbBalanceIsZero();
     error Presale_UsdtBalanceIsZero();
     error Presale_WithdrawFailed();
 
     uint256 private constant TOKEN_RATE = 100;
     uint256 private constant PRICE_IN_BNB =  0.01 ether;
-    uint256 private PRICE_IN_USDT = 0.1 ether ;
+    uint256 private PRICE_IN_USDT = 0.01 ether ;
     uint256 private constant DECIMALS = 1e18;
     
 
@@ -104,6 +104,12 @@ contract Presale is Ownable {
     }
 
 
+    // function approve(address spender, uint256 amount) public returns(bool isApproved) {
+        
+    //     _approve(owner, spender, value);
+    // }
+
+
     // -------------------- EXTERNAL & PUBLIC FUNCTIONS ----------------------------
     function buyToken(uint256 amount, string memory currency) external payable NotZeroAddress returns(bool, uint) {
          ( address token, bool isBnb ) = _selectedCurrencyToPay(currency);
@@ -111,7 +117,7 @@ contract Presale is Ownable {
          bool isBnb_ = isBnb;
          uint256 payAmount_ = _amountToPay(amount, currency);
 
-        if(isBnb && msg.value <= 0) {
+        if(isBnb_ && msg.value <= 0) {
             revert Presale_valueShouldMoreThanZero();
         }
 
@@ -121,18 +127,15 @@ contract Presale is Ownable {
              (success, ) = payable(address(this)).call{value: msg.value}("");
         }
 
-        if(token == s_currency.usdt || token == s_currency.usdc && balanceOfToken > payAmount_) {
-        //    IERC20(token).approve(address(this), payAmount_);
-           success = IERC20(token).transferFrom(msg.sender, s_treasuryWallet, payAmount_);
-        //    success = IERC20(token).transfer(address(this), payAmount_);
+        if(token == s_currency.usdt || token == s_currency.usdc && balanceOfToken > payAmount_ && !isBnb) {
+            success = IERC20(token).transferFrom(msg.sender, s_treasuryWallet, payAmount_);
         }
 
         if(!success) {
-            revert Presale_PaymentFailed();
+            revert Presale_PaymentFailed("payment failed");
         }
 
-        s_tokenToSell.approve(address(this), amount);
-        s_tokenToSell.transferFrom(address(this), msg.sender, amount);
+        s_tokenToSell.transfer(msg.sender, amount);
         emit BuyTokenSuccessull(msg.sender, amount);
         return (true, amount | payAmount_);
     }
@@ -179,7 +182,7 @@ contract Presale is Ownable {
         emit WithdrawSuccessfull(s_treasuryWallet, amount | address(this).balance);
     }
 
-    function startPrivateSale() external onlyOwner returns(SaleState state) {
+    function startPreSale() external onlyOwner returns(SaleState state) {
         require(s_saleState != SaleState.START, "presale is has been started");
         s_saleState = SaleState.START;
         state = s_saleState;
