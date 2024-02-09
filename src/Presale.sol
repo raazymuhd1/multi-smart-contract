@@ -144,7 +144,7 @@ contract Presale is Ownable {
          bool isBnb_ = isBnb;
          uint256 payAmount_ = _amountToPay(amount, currency);
 
-        require(isBnb_ && (msg.value < payAmount_), "insufficient BNB balance") ;
+        require(isBnb_ && (msg.value >= payAmount_), "insufficient BNB balance") ;
 
         bool success;
 
