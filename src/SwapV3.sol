@@ -26,7 +26,6 @@ contract SwapV3 {
     function swapExactInputSingleHop(
         address tokenIn,
         address tokenOut,
-        uint24 poolFee,
         uint amountIn
     ) external returns (uint256 amountOut) {
         IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);

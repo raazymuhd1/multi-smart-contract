@@ -21,6 +21,8 @@ contract WETH is ERC20 {
         deposit();
     }
 
+    receive() external payable {}
+
     function deposit() public payable {
         uint256 depositValue_ = msg.value;
         _mint(msg.sender, depositValue_); // mint an ERC20 token of WETH after depositing ETH
@@ -30,6 +32,6 @@ contract WETH is ERC20 {
     function withdraw(uint256 amount_) external payable {
         address payable sender = payable(msg.sender);
         _burn(msg.sender, amount_);
-        sender.call{value: amount_}("");
+        (bool success, ) = sender.call{value: amount_}("");
     }
 }
